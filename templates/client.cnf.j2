@@ -1,0 +1,34 @@
+client
+dev {{ openvpn_dev }}
+proto {{ openvpn_proto }}
+remote {{ openvpn_server }} {{ openvpn_port }}
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+
+cipher {{ openvpn_cipher }}
+auth {{ openvpn_auth_digest }}
+ns-cert-type server
+key-direction 1
+tls-version-min {{ openvpn_tls_version_min }}
+;comp-lzo
+verb 3
+
+route {{ ansible_default_ipv4.address }} 255.255.255.255 net_gateway
+
+<ca>
+{{ openvpn_ca_content.stdout  }}
+</ca>
+
+<cert>
+{{ item[1].stdout  }}
+</cert>
+
+<key>
+{{ item[2].stdout  }}
+</key>
+
+<tls-auth>
+{{ openvpn_hmac_content.stdout  }}
+</tls-auth>

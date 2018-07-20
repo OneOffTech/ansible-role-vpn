@@ -1,0 +1,136 @@
+
+- name: OpenVPN is installed
+  apt: pkg={{item}} state=installed
+  with_items:
+    - openvpn
+    - openssl
+    - udev
+
+- name: Server RSA Keys are generated
+  command: openssl genrsa -out {{item}}.key {{openvpn_key_size}}
+           chdir={{openvpn_path}}
+           creates={{item}}.key
+  with_items:
+    - ca
+    - server
+
+- name: Client-directories exist
+  file: path={{openvpn_path}}/{{item}} state=directory
+  with_items: "{{ openvpn_initial_clients }}"
+
+- name: Client-Keys are created
+  command: openssl genrsa -out client.key {{ openvpn_key_size }}
+           chdir={{openvpn_path}}/{{item}}
+           creates=client.key
+  with_items: "{{ openvpn_initial_clients }}"
+
+- name: CA is generated
+  command: openssl req -nodes -batch -new -x509 -key {{openvpn_ca}}.key -out {{openvpn_ca}}.crt -days {{openvpn_days_valid}} -subj "{{openvpn_request_subject}}/CN=ca-certificate"
+           creates={{openvpn_ca}}.crt
+
+- name: OpenSSL signing configuration is created
+  # openvpn.net/index.php/open-source/documentation/howto.html#mitm
+  template: src=openssl-server-certificate.cnf.j2
+            dest={{openvpn_path}}/openssl-server-certificate.cnf
+
+- name: Certificate Database exists
+  command: touch {{openvpn_path}}/index.txt
+           creates={{openvpn_path}}/index.txt
+
+- name: CA Serial File exists
+  shell: echo 01 > {{openvpn_path }}/serial
+         creates={{openvpn_path}}/serial
+
+- name: Server signing request is generated
+  command: openssl req -batch -extensions server -new -key server.key -out server.csr -config {{openvpn_path}}/openssl-server-certificate.cnf
+           chdir={{openvpn_path}}
+           creates=server.csr
+
+- name: Server Certificate is signed
+  command: openssl ca -batch -extensions server -in server.csr -out server.crt -config openssl-server-certificate.cnf
+           chdir={{openvpn_path}}
+           creates=server.crt
+
+- name: Client CSRs are generated
+  command: openssl req -new -key client.key -out client.csr -subj "{{ openvpn_request_subject }}/CN={{ item }}"
+           chdir={{openvpn_path}}/{{item}}
+           creates=client.csr
+  with_items: "{{ openvpn_initial_clients }}"
+
+- name: Client certificates are signed
+  command: openssl x509 -CA {{openvpn_ca}}.crt -CAkey {{openvpn_ca}}.key -CAcreateserial -req -days {{openvpn_days_valid}} -in client.csr -out client.crt
+           chdir={{openvpn_path}}/{{item}}
+           creates=client.crt
+  with_items: "{{ openvpn_initial_clients }}"
+
+- name: HMAC Key is created
+  command: openvpn --genkey --secret {{openvpn_hmac_firewall}}
+           creates={{openvpn_hmac_firewall}}
+
+- name: DH-Parameter are created (this will take some minutes)
+  command: openssl dhparam -out {{openvpn_dhparam}} {{openvpn_key_size}}
+           creates={{openvpn_dhparam}}
+
+# ------------------------------------------------------------------------
+# The contents of CA, Cert, Key and HMAC key are stored in temporary
+# registers, in order to paste them into the configuration files.
+- name: CA in register
+  command: cat ca.crt
+           chdir={{ openvpn_path  }}
+  register: openvpn_ca_content
+
+- name: Cert in register
+  command: cat client.crt
+           chdir={{ openvpn_path  }}/{{ item  }}
+  with_items: "{{ openvpn_initial_clients }}"
+  register: openvpn_client_certificates
+
+- name: Keys in register
+  command: cat client.key
+           chdir={{ openvpn_path  }}/{{ item  }}
+  with_items: "{{ openvpn_initial_clients }}"
+  register: openvpn_client_keys
+
+- name: HMAC in register
+  command: cat ta.key
+           chdir={{ openvpn_path  }}
+  register: openvpn_hmac_content
+# ------------------------------------------------------------------------
+
+- name: Client configurations are created
+  template: src=client.cnf.j2
+            dest={{openvpn_path}}/{{item[0]}}/{{openvpn_server}}.ovpn
+  with_together:
+    - "{{ openvpn_initial_clients }}"
+    - "{{ openvpn_client_certificates.results }}"
+    - "{{ openvpn_client_keys.results }}"
+
+- name: IPv4 forwarding is enabled
+  sysctl: name=net.ipv4.ip_forward value=1
+
+- name: server-configuration is created
+  template: src=etc_openvpn_server.conf.j2 dest=/etc/openvpn/server.conf
+  notify: restart openvpn
+
+- name: ca.crt und ta.key are available for the clients
+  command: cp {{openvpn_path}}/{{item[1]}} {{openvpn_path}}/{{item[0]}}
+           creates={{openvpn_path}}/{{item[0]}}/{{item[1]}}
+  with_nested:
+    - openvpn_initial_clients
+    - ["ca.crt", "ta.key"]
+
+# iptables -t nat -A POSTROUTING -s 10.208.0.0/24 -o ens3 -j MASQUERADE
+# iptables -A FORWARD -i tun+ -j ACCEPT
+# iptables -A FORWARD -i tun+ -o eth0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+# iptables -D FORWARD -i tun+ -o eth0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+# iptables -A FORWARD -i tun+ -o ens3 -m state --state RELATED,ESTABLISHED -j ACCEPT
+# iptables -A FORWARD -i ens3 -o tun+ -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+
+- name: VPN-Dateien auf den LOKALEN Rechner kopiert
+  fetch: src={{openvpn_path}}/{{item[0]}}/{{item[1]}}
+         dest=/tmp/openvpn-files
+  with_nested:
+    - openvpn_initial_clients
+    - ["{{openvpn_server}}.ovpn"]  # all information included inside this file
+      #    - ["client.crt", "client.key", "ca.crt", "ta.key", "{{ openvpn_server }}.ovpn"]  # Debugging
