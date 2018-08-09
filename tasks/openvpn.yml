@@ -78,23 +78,27 @@
   command: cat ca.crt
            chdir={{ openvpn_path  }}
   register: openvpn_ca_content
+  check_mode: no
 
 - name: Cert in register
   command: cat client.crt
            chdir={{ openvpn_path  }}/{{ item  }}
   with_items: "{{ openvpn_initial_clients }}"
   register: openvpn_client_certificates
+  check_mode: no
 
 - name: Keys in register
   command: cat client.key
            chdir={{ openvpn_path  }}/{{ item  }}
   with_items: "{{ openvpn_initial_clients }}"
   register: openvpn_client_keys
+  check_mode: no
 
 - name: HMAC in register
   command: cat ta.key
            chdir={{ openvpn_path  }}
   register: openvpn_hmac_content
+  check_mode: no
 # ------------------------------------------------------------------------
 
 - name: Client configurations are created
