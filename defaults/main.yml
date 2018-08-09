@@ -26,5 +26,7 @@ openvpn_request_subject: "/C={{ openvpn_key_country }}/ST={{ openvpn_key_provinc
 
 openvpn_network: 10.207.0.0 # Address space for client IPs
 
+openvpn_route_traffic: false
+
 openvpn_initial_clients:
   - testclient

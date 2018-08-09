@@ -77,6 +77,7 @@ ifconfig-pool-persist ipp.txt
 ;push "route 172.16.0.0 255.255.255.0"
 ;push "route 172.16.1.0 255.255.255.0"
 
+{% if openvpn_route_traffic %}
 # If enabled, this directive will configure
 # all clients to redirect their default
 # network gateway through the VPN, causing
@@ -85,7 +86,7 @@ ifconfig-pool-persist ipp.txt
 # (The OpenVPN server machine may need to NAT
 # or bridge the TUN/TAP interface to the internet
 # in order for this to work properly).
-;push "redirect-gateway def1 bypass-dhcp"
+push "redirect-gateway def1 bypass-dhcp"
 ;push "redirect-gateway def1"
 ;push "dhcp-option DNS 10.207.0.1"
 
@@ -93,11 +94,10 @@ ifconfig-pool-persist ipp.txt
 # can be pushed to clients, such as DNS
 # or WINS server addresses.  CAVEAT:
 # http://openvpn.net/faq.html#dhcpcaveats
-# The addresses below refer to the public
-# DNS servers provided by opendns.com.
-;push "dhcp-option DNS 208.67.222.222"
-;push "dhcp-option DNS 208.67.220.220"
+push "dhcp-option DNS 1.1.1.1"
+push "dhcp-option DNS 1.0.0.1"
 
+{% endif %}
 # Uncomment this directive to allow different
 # clients to be able to "see" each other.
 # By default, clients will only see the server.
