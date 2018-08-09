@@ -1,0 +1,27 @@
+
+- iptables:
+    action: insert
+    chain: FORWARD
+    in_interface: tun0
+    out_interface: eth0
+    source: "{{ openvpn_network }}/24"
+    ctstate:
+      - NEW
+    jump: ACCEPT
+
+- iptables:
+    table: nat
+    action: insert
+    chain: POSTROUTING
+    out_interface: eth0
+    source: "{{ openvpn_network }}/24"
+    jump: MASQUERADE
+
+- iptables:
+    action: insert
+    chain: FORWARD
+    ctstate:
+      - RELATED
+      - ESTABLISHED
+    jump: ACCEPT
+

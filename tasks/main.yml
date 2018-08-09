@@ -1,3 +1,6 @@
 ---
 
 - include: openvpn.yml tags=openvpn
+
+- include: iptables.yml tags=openvpn
+  when: openvpn_route_traffic
