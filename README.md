@@ -3,6 +3,8 @@ VPN
 
 The VPN role is able to set up a containerized VPN on the host system. It supports openvpn for now.
 
+The VPN can be used to relay all traffic, see the `openvpn_route_traffic` option below.
+
 For automatically generating new certificates for your users, look into the [Certman](https://github.com/OneOffTech/openvpn-certman) Project.
 
 Requirements
@@ -90,3 +92,8 @@ Upgrading installation
 ----------------------
 
 As the server does not store any persistent state, it is possible to simply run this role after changing the parameters. Note that some configuration changes will require the client configuration to be regenerated.
+
+License
+-------
+
+MIT
