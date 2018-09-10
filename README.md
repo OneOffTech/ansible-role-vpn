@@ -1,13 +1,17 @@
-# VPN
+VPN
+===
+
 The VPN role is able to set up a containerized VPN on the host system. It supports openvpn for now.
 
-## Requirements
-A working docker installation is required.
-
-## Further Links
 For automatically generating new certificates for your users, look into the [Certman](https://github.com/OneOffTech/openvpn-certman) Project.
 
-## Configuration Variables
+Requirements
+------------
+A working docker installation is required.
+
+Configuration Variables
+-----------------------
+
 ```yaml
 openvpn_days_valid: "1825" # In days, maximum age of the master CA certificate.
 openvpn_key_size: "2048" # Bits, 2048+ strongly recommended
@@ -46,7 +50,9 @@ openvpn_initial_clients:
 
 ```
 
-### Example Configuration
+Example Configuration
+---------------------
+
 ```yaml
 openvpn_days_valid: "1825" # 5 Years.
 openvpn_key_size: "2048"
@@ -80,5 +86,7 @@ openvpn_initial_clients:
   - testclient
 ```
 
-### Upgrading installation
+Upgrading installation
+----------------------
+
 As the server does not store any persistent state, it is possible to simply run this role after changing the parameters. Note that some configuration changes will require the client configuration to be regenerated.
